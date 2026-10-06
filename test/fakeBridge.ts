@@ -12,8 +12,8 @@ export type Handler<T extends Request['type'] = Request['type']> = (
 ) => void | Promise<void>;
 
 export interface FakeBridge {
-  /** `ws://127.0.0.1:<port>/ws` */
-  url: string;
+  /** The ephemeral port on 127.0.0.1; dial it with `connectBridge({ port })`. */
+  port: number;
   /** Every request received, in order. */
   received: Request[];
   /** Script a reply for one request type. Unscripted requests are recorded and ignored. */
@@ -62,7 +62,7 @@ export async function startFakeBridge(options: { probes?: ProbeEntry[] } = {}): 
   });
 
   return {
-    url: `ws://127.0.0.1:${port}/ws`,
+    port,
     received,
     handle(type, handler) {
       handlers.set(type, handler as unknown as Handler);

@@ -68,7 +68,11 @@ export async function captureChain(bridge: Bridge, t: number): Promise<CapturedD
   const probes = (await bridge.probes()).filter((p) => p.target.t === t && p.target.path.length === 0);
   const shells = await readRun(bridge, t, []);
   const open = between(shells, probes);
-  const devices = await readRun(bridge, t, open);
+  const devices = await readRun(
+    bridge,
+    t,
+    open.map((i) => ({ i, className: shells[i]!.className })),
+  );
   return open
     .map((i) => devices[i])
     .filter((d): d is ChainDevice => d !== undefined)

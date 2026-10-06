@@ -48,6 +48,17 @@ export interface Plan {
   targetLufs: number;
   /** True-peak ceiling, dBTP. */
   truePeakDb: number;
+  /**
+   * The most make-up gain the Limiter may add, dB: whatever keeps the
+   * recording's broadband noise floor at or under -60 dBFS, and never above
+   * +12. Verify holds to it too.
+   */
+  maxGainDb: number;
+  /**
+   * Set when that cap stops the plan short of `targetLufs`: the integrated
+   * loudness it is left at instead, LUFS. Verify counts that as a pass.
+   */
+  heldLufs: number | null;
   /** Devices in chain order. Only the ones that are needed. */
   steps: PlanStep[];
   /** Anything the user should know that isn't a device, e.g. "no loudness yet". */

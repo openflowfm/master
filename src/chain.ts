@@ -110,14 +110,28 @@ export function planProbeLayout(trackName: string, devices: ChainDevice[], probe
   };
 }
 
+/** A device to open in `readRun`, optionally with the class it must have there. */
+export interface OpenDevice {
+  i: number;
+  className?: string;
+}
+
 /**
  * Watches track `t`'s own run with `open` expanded and resolves with its
- * devices from the first `chainState` that has the run and the parameters of
- * every open index that exists. Rejects if the run no longer resolves (the
- * track has gone) or on timeout. Leaves the watch in place; whoever owns the
- * view sends the next `watchChains`.
+ * devices from the first `chainState` that has the run, **contains every open
+ * index** with its parameters, and has the expected class at each index that
+ * names one. An index beyond the run is not ready, it is stale: keep waiting.
+ * Rejects if the run no longer resolves (the track has gone) or on timeout.
+ * Leaves the watch in place; whoever owns the view sends the next `watchChains`.
  */
-export function readRun(bridge: Bridge, t: number, open: number[], timeoutMs = 5_000): Promise<ChainDevice[]> {
+export function readRun(
+  bridge: Bridge,
+  t: number,
+  open: Array<number | OpenDevice>,
+  timeoutMs = 5_000,
+): Promise<ChainDevice[]> {
+  const wanted = open.map((entry) => (typeof entry === 'number' ? { i: entry } : entry));
+  const indexes = wanted.map((entry) => entry.i);
   return new Promise<ChainDevice[]>((resolve, reject) => {
     const finish = (settle: () => void) => {
       off();
@@ -137,11 +151,21 @@ export function readRun(bridge: Bridge, t: number, open: number[], timeoutMs = 5
         finish(() => reject(new Error(`the chain on track ${t} no longer resolves`)));
         return;
       }
-      const ready = open.every((index) => index >= devices.length || devices[index]!.parameters !== undefined);
+      // A frame that doesn't hold every open device yet, or holds another class
+      // at one of those indexes, is stale (it predates an insert or a move):
+      // keep waiting rather than read the wrong device.
+      const ready = wanted.every(({ i, className }) => {
+        const device = devices[i];
+        return (
+          device !== undefined &&
+          device.parameters !== undefined &&
+          (className === undefined || device.className === className)
+        );
+      });
       if (ready) finish(() => resolve(devices));
     });
     try {
-      bridge.send({ type: 'watchChains', subs: [{ t, path: [], open }] });
+      bridge.send({ type: 'watchChains', subs: [{ t, path: [], open: indexes }] });
     } catch (error) {
       finish(() => reject(error));
     }

@@ -4,12 +4,15 @@ import type { PlanStep, Setting } from './types.ts';
 import {
   MAX_BOOST_DB,
   MAX_CUT_DB,
+  MAX_NOISE_FLOOR_DB,
   MAX_RATIO,
   MIN_RATIO,
   SIBILANCE_THRESHOLD_DB,
   bandResiduals,
   contentStartHz,
   highPassHz,
+  maxMakeupGainDb,
+  noiseFloorDb,
   planChain,
   ratioForLra,
   sibilance,
@@ -31,11 +34,14 @@ interface Opts {
   steady?: Record<number, number>;
   lra?: number | null;
   lufs?: number | null;
+  /** dB between each content band's mean and its floor; the default 75 keeps the hiss cap out of the way. */
+  floorGap?: number;
 }
 
-/** A clean recording: -3 dB/octave tilt, 20 dB between mean and floor. */
+/** A clean recording: -3 dB/octave tilt, `floorGap` (75) dB between mean and floor. */
 function report(o: Opts = {}): ProbeReport {
   const start = o.start ?? 80;
+  const gap = o.floorGap ?? 75;
   const end = o.end ?? 12500;
   const bands: ProbeBand[] = ISO.map((hz) => {
     if (o.steady?.[hz] !== undefined) {
@@ -44,7 +50,7 @@ function report(o: Opts = {}): ProbeReport {
     }
     if (hz < start || hz > end) return { hz, meanDb: -110, floorDb: -112, peakDb: -105 };
     const meanDb = -30 - 3 * Math.log2(hz / 1000) + (o.bumps?.[hz] ?? 0);
-    return { hz, meanDb, floorDb: meanDb - 20, peakDb: meanDb + 8 };
+    return { hz, meanDb, floorDb: meanDb - gap, peakDb: meanDb + 8 };
   });
   return {
     seconds: 30,
@@ -197,9 +203,33 @@ describe('planChain', () => {
     const custom = planChain(report({ start: 20, lufs: -22 }), { material: 'speech', targetLufs: -19 });
     expect(value(custom.steps.at(-1), 'Gain')).toBe(3);
 
-    const quiet = planChain(report({ start: 20, lufs: -70 }), { material: 'speech' });
-    expect(value(quiet.steps.at(-1), 'Gain')).toBe(24);
-    expect(quiet.notes.length).toBe(1);
+    // A clean but very quiet recording stops at the absolute +12 dB cap.
+    const quiet = planChain(report({ start: 20, lufs: -70, floorGap: 100 }), { material: 'speech' });
+    expect(value(quiet.steps.at(-1), 'Gain')).toBe(12);
+    expect(quiet.maxGainDb).toBe(12);
+    expect(quiet.heldLufs).toBe(-58);
+    expect(quiet.notes).toEqual(['Left at -58 LUFS: make-up gain stops at 12 dB.']);
+  });
+
+  it('caps make-up gain so the noise floor stays at or under -60 dBFS', () => {
+    const r = report({ start: 20, lufs: -30, floorGap: 60 });
+    const floor = noiseFloorDb(r);
+    expect(floor).toBeGreaterThan(MAX_NOISE_FLOOR_DB - 12);
+    const plan = planChain(r, { material: 'speech' });
+    const gain = value(plan.steps.at(-1), 'Gain')!;
+    expect(gain).toBe(maxMakeupGainDb(r));
+    expect(gain).toBeGreaterThan(0);
+    expect(gain).toBeLessThan(12);
+    expect(floor + gain).toBeLessThanOrEqual(MAX_NOISE_FLOOR_DB + 0.05);
+    expect(plan.heldLufs).toBe(Math.round((-30 + gain) * 10) / 10);
+    expect(plan.notes[0]).toMatch(new RegExp(`^Left at ${plan.heldLufs} LUFS to keep hiss down`));
+
+    // A floor already above -60 never turns the recording down.
+    expect(maxMakeupGainDb(report({ lufs: -30, floorGap: 6 }))).toBe(0);
+    // Room to spare: the full gain to the target, no hold.
+    const clean = planChain(report({ lufs: -22 }), { material: 'speech' });
+    expect(clean.heldLufs).toBeNull();
+    expect(value(clean.steps.at(-1), 'Gain')).toBe(6);
   });
 
   it('null loudness: gain 0 and a note', () => {

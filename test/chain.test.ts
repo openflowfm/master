@@ -54,17 +54,17 @@ async function setup(names: string[]) {
     reply({ type: 'deviceMoved', target: { t: T, path: [], i: request.at } });
     broadcast({ type: 'probes', probes: live.probes() });
   });
-  bridge = await connectBridge({ url: fake.url });
+  bridge = await connectBridge({ port: fake.port });
   return { live, fake, bridge };
 }
 
 describe('readRun', () => {
   it('picks the track run out of the union and waits for the open parameters', async () => {
     fake = await startFakeBridge();
-    bridge = await connectBridge({ url: fake.url });
-    const reading = readRun(bridge, T, [1, 7]);
+    bridge = await connectBridge({ port: fake.port });
+    const reading = readRun(bridge, T, [1]);
     const request = await fake.nextRequest('watchChains');
-    expect(request.subs).toEqual([{ t: T, path: [], open: [1, 7] }]);
+    expect(request.subs).toEqual([{ t: T, path: [], open: [1] }]);
 
     const parameters = [
       { name: 'Gain', value: 0, min: -1, max: 1, defaultValue: 0, quantized: false, display: '0.0 dB', state: 0 },
@@ -81,9 +81,30 @@ describe('readRun', () => {
     await expect(reading).resolves.toEqual(ready);
   });
 
+  it('waits out a stale chainState that lacks the open device or has another class there', async () => {
+    fake = await startFakeBridge();
+    bridge = await connectBridge({ port: fake.port });
+    const reading = readRun(bridge, T, [{ i: 2, className: 'Limiter' }]);
+    const request = await fake.nextRequest('watchChains');
+    expect(request.subs).toEqual([{ t: T, path: [], open: [2] }]);
+
+    const parameters = [
+      { name: 'Gain', value: 0, min: 0, max: 1, defaultValue: 0, quantized: false, display: '0.0 dB', state: 0 },
+    ] as unknown as ChainDevice['parameters'];
+    // Before the insert landed: index 2 is past the end of the run.
+    const before = [device('Probe'), device('Probe')];
+    fake.broadcast({ type: 'chainState', state: { chains: [{ t: T, path: [], devices: before }] } });
+    // Index 2 exists and is open, but it's the post probe, not the Limiter.
+    const wrong = [device('Probe'), device('EQ Eight'), { ...device('Probe'), parameters }];
+    fake.broadcast({ type: 'chainState', state: { chains: [{ t: T, path: [], devices: wrong }] } });
+    const ready = [device('Probe'), device('EQ Eight'), { ...device('Limiter'), parameters }, device('Probe')];
+    fake.broadcast({ type: 'chainState', state: { chains: [{ t: T, path: [], devices: ready }] } });
+    await expect(reading).resolves.toEqual(ready);
+  });
+
   it('ignores states that lack the run, then rejects when it no longer resolves', async () => {
     fake = await startFakeBridge();
-    bridge = await connectBridge({ url: fake.url });
+    bridge = await connectBridge({ port: fake.port });
     const reading = readRun(bridge, T, []);
     await fake.nextRequest('watchChains');
     fake.broadcast({ type: 'chainState', state: { chains: [{ t: 1, path: [], devices: [] }] } });
@@ -93,7 +114,7 @@ describe('readRun', () => {
 
   it('times out when nothing arrives', async () => {
     fake = await startFakeBridge();
-    bridge = await connectBridge({ url: fake.url });
+    bridge = await connectBridge({ port: fake.port });
     await expect(readRun(bridge, T, [], 50)).rejects.toThrow(/timed out/);
   });
 });

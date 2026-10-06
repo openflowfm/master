@@ -206,7 +206,8 @@ function report(lufs: number | null, truePeakDb = -6): ProbeReport {
     bands: ISO.map((hz) => {
       if (hz < 100) return { hz, meanDb: -150, floorDb: -150, peakDb: -150 };
       const mean = Math.round((-30 - 3 * Math.log2(hz / 1000)) * 10) / 10;
-      return { hz, meanDb: mean, floorDb: mean - 20, peakDb: mean + 10 };
+      // A quiet floor, so the hiss cap on make-up gain stays out of the way.
+      return { hz, meanDb: mean, floorDb: mean - 60, peakDb: mean + 10 };
     }),
   };
 }
@@ -233,7 +234,7 @@ afterEach(async () => {
 async function setUp(names: string[], passes: Array<Record<string, ProbeReport>>) {
   const served = await serve(names, passes);
   fake = served.fake;
-  bridge = await connectBridge({ url: fake.url });
+  bridge = await connectBridge({ port: fake.port });
   stateDir = await mkdtemp(join(tmpdir(), 'master-session-test-'));
   const lines: string[] = [];
   const io: SessionIO = { log: (line) => lines.push(line), waitForDone: () => Promise.resolve() };
@@ -317,6 +318,45 @@ describe('run', () => {
     expect(ofType(fake.received, 'setDevice').length).toBeGreaterThan(0);
     expect(ofType(afterPass(fake.received, 2), 'setDevice')).toEqual([]);
     expect(lines).toContain('On target. Tweak by ear if you like, then run `capture` to keep the result.');
+  });
+
+  it('re-finds the probes by key after the pass, so a device dropped mid-pass shifts the inserts', async () => {
+    const { fake, bridge, stateDir, io, run: live } = await setUp(['pre', 'post'], [
+      { pre: PRE, post: DECOY },
+      { post: report(-16.2, -1.2) },
+    ]);
+    let passes = 0;
+    io.waitForDone = async () => {
+      if (++passes === 1) {
+        // While the recording plays, the user drops a Utility between the probes.
+        live.splice(1, 0, CATALOGUE['Utility']!());
+        const probes = live.flatMap((d, i) => (d.key ? [{ key: d.key, target: { t: T, path: [], i }, name: PROBE_NAME }] : []));
+        fake.broadcast({ type: 'probes', probes });
+      }
+    };
+
+    await run(bridge, { name: 'Lead vocal', material: 'speech', stateDir }, io);
+    await flush(fake, bridge);
+
+    // Before the pass the post probe was at 1; the inserts go where it is now.
+    expect(ofType(fake.received, 'insertDevice').map((r) => r.at)).toEqual([2, 3]);
+    expect(live.map((d) => d.key ?? d.name)).toEqual(['pre', 'Utility', 'EQ Eight', 'Limiter', 'post']);
+  });
+
+  it('inserts nothing when a probe went away during the pass', async () => {
+    const { fake, bridge, stateDir, io, lines } = await setUp(['pre', 'post'], [{ pre: PRE, post: DECOY }]);
+    io.waitForDone = async () => {
+      // The bridge's latest list no longer has the post probe.
+      fake.broadcast({ type: 'probes', probes: [{ key: 'pre', target: { t: T, path: [], i: 0 }, name: PROBE_NAME }] });
+    };
+
+    const result = await run(bridge, { name: 'Lead vocal', material: 'speech', stateDir }, io);
+    await flush(fake, bridge);
+
+    expect(result.plan).not.toBeNull();
+    expect(result.applied).toEqual([]);
+    expect(ofType(fake.received, 'insertDevice')).toEqual([]);
+    expect(lines.join('\n')).toMatch(/moved or went away during the pass/);
   });
 
   it('returns instructions and sends no insert or listen when the probes are missing', async () => {

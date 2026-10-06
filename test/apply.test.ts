@@ -150,6 +150,8 @@ const plan: Plan = {
   material: 'speech',
   targetLufs: -16,
   truePeakDb: -1,
+  maxGainDb: 12,
+  heldLufs: null,
   notes: [],
   steps: [
     {
@@ -185,7 +187,7 @@ describe('applyPlan', () => {
   it('inserts the steps in order before the post probe, then writes each control in real units', async () => {
     fake = await startFakeBridge();
     const live = serveTrack(fake, [probe(), probe()]);
-    bridge = await connectBridge({ url: fake.url });
+    bridge = await connectBridge({ port: fake.port });
 
     const applied = await applyPlan(bridge, T, plan, 1);
     await flush(fake, bridge);
@@ -269,7 +271,7 @@ describe('applyPlan', () => {
   it('clamps a target the control cannot reach to the nearest end', async () => {
     fake = await startFakeBridge();
     const live = serveTrack(fake, [probe(), probe()]);
-    bridge = await connectBridge({ url: fake.url });
+    bridge = await connectBridge({ port: fake.port });
 
     const loud: Plan = {
       ...plan,
@@ -281,7 +283,7 @@ describe('applyPlan', () => {
     expect(live.run[1]!.params[1]!.value).toBe(1);
   });
 
-  it('writes nothing and reports every setting missing when the inserted device is not what Live says is there', async () => {
+  it('writes nothing and rejects when the run never shows the class Live said it inserted', async () => {
     fake = await startFakeBridge();
     const live = serveTrack(fake, [probe(), probe()]);
     // Live answers with a class the watched run doesn't hold at that index.
@@ -289,12 +291,12 @@ describe('applyPlan', () => {
       live.run.splice(request.at!, 0, limiter());
       reply({ type: 'deviceInserted', target: { t: T, path: [], i: request.at! }, className: 'Eq8' });
     });
-    bridge = await connectBridge({ url: fake.url });
+    bridge = await connectBridge({ port: fake.port });
 
-    const [step] = await applyPlan(bridge, T, { ...plan, steps: [plan.steps[0]!] }, 1);
+    await expect(
+      applyPlan(bridge, T, { ...plan, steps: [plan.steps[0]!] }, 1, undefined, 100),
+    ).rejects.toThrow(/timed out reading the chain/);
     await flush(fake, bridge);
-    expect(step!.written).toEqual([]);
-    expect(step!.missing).toHaveLength(plan.steps[0]!.settings.length);
     expect(fake.received.some((r) => r.type === 'setDevice' || r.type === 'paramText')).toBe(false);
   });
 });

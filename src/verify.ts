@@ -8,8 +8,11 @@ import type { Plan, Setting } from './types.ts';
 export const LOUDNESS_TOLERANCE_LU = 1;
 /** True peak may sit this far above the ceiling before it counts as over. */
 export const PEAK_TOLERANCE_DB = 0.3;
-/** The Limiter's make-up gain stays inside this range, as in the planner. */
-export const GAIN_RANGE_DB: readonly [number, number] = [-12, 24];
+/**
+ * The Limiter's make-up gain stays inside this range, as in the planner. The
+ * top is lowered further by `plan.maxGainDb`, which keeps the hiss down.
+ */
+export const GAIN_RANGE_DB: readonly [number, number] = [-12, 12];
 
 export interface Assessment {
   lufs: number | null;
@@ -56,12 +59,20 @@ export function assess(
   } else if (Math.abs(loudnessErrorLu) <= LOUDNESS_TOLERANCE_LU) {
     lines.push(`Loudness ${round1(lufs!)} LUFS, within ${LOUDNESS_TOLERANCE_LU} LU of ${plan.targetLufs}.`);
   } else {
-    const [lo, hi] = GAIN_RANGE_DB;
-    const gain = round1(Math.min(hi, Math.max(lo, current.gainDb + loudnessErrorLu)));
-    lines.push(
-      `Loudness ${round1(lufs!)} LUFS, ${Math.abs(loudnessErrorLu)} LU ${loudnessErrorLu > 0 ? 'under' : 'over'} ${plan.targetLufs}: Limiter gain ${current.gainDb} → ${gain} dB.`,
-    );
-    if (gain !== current.gainDb) corrections.push({ kind: 'number', controls: ['Gain'], value: gain, unit: 'dB' });
+    const lo = GAIN_RANGE_DB[0];
+    const hi = Math.min(GAIN_RANGE_DB[1], plan.maxGainDb);
+    const wanted = round1(current.gainDb + loudnessErrorLu);
+    const gain = round1(Math.min(hi, Math.max(lo, wanted)));
+    const short = `${Math.abs(loudnessErrorLu)} LU ${loudnessErrorLu > 0 ? 'under' : 'over'} ${plan.targetLufs}`;
+    if (gain === current.gainDb && loudnessErrorLu > 0 && gain >= hi) {
+      // Under target only because the hiss cap holds the gain: that is the
+      // plan working, not a miss.
+      lines.push(`Loudness ${round1(lufs!)} LUFS, ${short}: left there to keep hiss down (gain held at ${gain} dB).`);
+    } else {
+      lines.push(`Loudness ${round1(lufs!)} LUFS, ${short}: Limiter gain ${current.gainDb} → ${gain} dB.`);
+      if (gain < wanted && hi < GAIN_RANGE_DB[1]) lines.push(`Gain stops at ${gain} dB to keep hiss down.`);
+      if (gain !== current.gainDb) corrections.push({ kind: 'number', controls: ['Gain'], value: gain, unit: 'dB' });
+    }
   }
 
   if (peakOverDb > PEAK_TOLERANCE_DB) {

@@ -26,8 +26,7 @@ Options:
   --target-lufs <x>     loudness target; default -16 speech, -14 music
   --seconds <s>         end each listening pass after s seconds instead of a keypress
   --dry-run             plan only; insert and set nothing
-  --port <n>            bridge port (default 17800)
-  --host <h>            bridge host (default 127.0.0.1)
+  --port <n>            bridge port on 127.0.0.1 (default 17800)
   --state-dir <dir>     where runs and captures are kept (default ~/.openflow/master)
   --log <file>          the capture log (default <state-dir>/captures.jsonl)
   -h, --help
@@ -77,7 +76,6 @@ async function main(argv: string[]): Promise<number> {
       seconds: { type: 'string' },
       'dry-run': { type: 'boolean', default: false },
       port: { type: 'string' },
-      host: { type: 'string', default: '127.0.0.1' },
       'state-dir': { type: 'string' },
       log: { type: 'string' },
       help: { type: 'boolean', short: 'h', default: false },
@@ -107,7 +105,7 @@ async function main(argv: string[]): Promise<number> {
     },
   };
 
-  const bridge = await connectBridge({ host: values.host, port: number(values.port, '--port') });
+  const bridge = await connectBridge({ port:number(values.port, '--port') });
   try {
     identify(bridge, version());
     if (command === 'capture') {

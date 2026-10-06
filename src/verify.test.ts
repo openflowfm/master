@@ -21,11 +21,13 @@ function report(over: Partial<ProbeReport> = {}): ProbeReport {
   };
 }
 
-function plan(gain = 4, ceiling = -1.2): Plan {
+function plan(gain = 4, ceiling = -1.2, maxGainDb = 12): Plan {
   return {
     material: 'speech',
     targetLufs: -16,
     truePeakDb: -1,
+    maxGainDb,
+    heldLufs: null,
     steps: [
       { device: 'EQ Eight', why: 'tone', settings: [{ kind: 'number', controls: ['Gain'], value: 99, unit: 'dB' }] },
       {
@@ -93,6 +95,17 @@ describe('assess', () => {
     expect(up.corrections).toEqual([{ kind: 'number', controls: ['Gain'], value: hi, unit: 'dB' }]);
     const down = assess(report({ lufsIntegrated: 0 }), plan(-10));
     expect(down.corrections).toEqual([{ kind: 'number', controls: ['Gain'], value: lo, unit: 'dB' }]);
+  });
+
+  it('holds gain at the hiss cap: raises only up to it, then counts under-target as a pass', () => {
+    const raised = assess(report({ lufsIntegrated: -22 }), plan(4, -1.2, 6));
+    expect(raised.corrections).toEqual([{ kind: 'number', controls: ['Gain'], value: 6, unit: 'dB' }]);
+    expect(raised.lines.join('\n')).toMatch(/hiss/);
+
+    const held = assess(report({ lufsIntegrated: -20 }), plan(6, -1.2, 6));
+    expect(held.corrections).toEqual([]);
+    expect(held.ok).toBe(true);
+    expect(held.lines[0]).toMatch(/left there to keep hiss down/);
   });
 
   it('adds no gain correction when already pinned at the clamp', () => {

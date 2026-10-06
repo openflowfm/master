@@ -88,7 +88,13 @@ export const MIN_GROUP_DB = ABSOLUTE_MIN_DB;
 export const THRESHOLD_RANGE_DB: readonly [number, number] = [-60, 0];
 
 /** Limiter make-up gain is clamped into this range, dB. */
-export const MAKEUP_GAIN_RANGE_DB: readonly [number, number] = [-12, 24];
+export const MAKEUP_GAIN_RANGE_DB: readonly [number, number] = [-12, 12];
+/**
+ * Make-up gain never lifts the recording's broadband noise floor (the energy
+ * sum of every band's `floorDb`) above this, dBFS: an iPhone recording pushed
+ * to a loudness target otherwise arrives with its hiss pushed up with it.
+ */
+export const MAX_NOISE_FLOOR_DB = -60;
 
 // --- analysis helpers --------------------------------------------------------
 
@@ -309,18 +315,46 @@ function multibandStep(report: ProbeReport, material: Material): PlanStep | null
   return { device: 'Multiband Dynamics', why, settings };
 }
 
-function limiterStep(report: ProbeReport, targetLufs: number, notes: string[]): PlanStep {
+/** Broadband noise floor: the energy sum of every band's `floorDb`, dBFS. */
+export function noiseFloorDb(report: ProbeReport): number {
+  return energySumDb(report.bands.map((b) => b.floorDb));
+}
+
+/**
+ * The most make-up gain allowed: what keeps the noise floor at or under
+ * `MAX_NOISE_FLOOR_DB`, capped at the top of `MAKEUP_GAIN_RANGE_DB`. Never
+ * below 0 — a floor that is already high is a reason not to raise it, not a
+ * reason to turn the recording down.
+ */
+export function maxMakeupGainDb(report: ProbeReport): number {
+  return round1(clamp(MAX_NOISE_FLOOR_DB - noiseFloorDb(report), 0, MAKEUP_GAIN_RANGE_DB[1]));
+}
+
+function limiterStep(
+  report: ProbeReport,
+  targetLufs: number,
+  maxGain: number,
+  notes: string[],
+): { step: PlanStep; heldLufs: number | null } {
   let gain = 0;
+  let heldLufs: number | null = null;
   if (report.lufsIntegrated === null) {
     notes.push('No integrated loudness measured yet, so the Limiter adds no make-up gain.');
   } else {
-    const wanted = targetLufs - report.lufsIntegrated;
-    gain = round1(clamp(wanted, ...MAKEUP_GAIN_RANGE_DB));
-    if (gain !== round1(wanted)) {
-      notes.push(`Reaching ${targetLufs} LUFS needs ${round1(wanted)} dB; make-up gain is held at ${gain} dB.`);
+    const wanted = round1(targetLufs - report.lufsIntegrated);
+    gain = round1(clamp(wanted, MAKEUP_GAIN_RANGE_DB[0], maxGain));
+    if (gain < wanted) {
+      heldLufs = round1(report.lufsIntegrated + gain);
+      notes.push(
+        maxGain < MAKEUP_GAIN_RANGE_DB[1]
+          ? `Left at ${heldLufs} LUFS to keep hiss down: more than ${gain} dB of gain would lift the noise floor above ${MAX_NOISE_FLOOR_DB} dBFS.`
+          : `Left at ${heldLufs} LUFS: make-up gain stops at ${gain} dB.`,
+      );
+    } else if (gain > wanted) {
+      notes.push(`Reaching ${targetLufs} LUFS needs ${wanted} dB; make-up gain is held at ${gain} dB.`);
     }
   }
-  return {
+  const step: PlanStep = {
     device: 'Limiter',
     why: `Limiter brings the level toward ${targetLufs} LUFS and keeps true peaks under ${TRUE_PEAK_CEILING_DB} dBTP.`,
     settings: [
@@ -329,6 +363,7 @@ function limiterStep(report: ProbeReport, targetLufs: number, notes: string[]): 
       num(['Gain'], gain, 'dB'),
     ],
   };
+  return { step, heldLufs };
 }
 
 // --- entry point -------------------------------------------------------------
@@ -341,11 +376,21 @@ export function planChain(
   const { material } = options;
   const targetLufs = options.targetLufs ?? DEFAULT_TARGET_LUFS[material];
   const notes: string[] = [];
+  const maxGainDb = maxMakeupGainDb(report);
+  const limiter = limiterStep(report, targetLufs, maxGainDb, notes);
   const steps = [
     eqStep(report),
     deEsserStep(report, material),
     multibandStep(report, material),
-    limiterStep(report, targetLufs, notes),
+    limiter.step,
   ].filter((s): s is PlanStep => s !== null);
-  return { material, targetLufs, truePeakDb: TRUE_PEAK_CEILING_DB, steps, notes };
+  return {
+    material,
+    targetLufs,
+    truePeakDb: TRUE_PEAK_CEILING_DB,
+    maxGainDb,
+    heldLufs: limiter.heldLufs,
+    steps,
+    notes,
+  };
 }

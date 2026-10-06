@@ -38,7 +38,7 @@ afterEach(async () => {
 
 async function setUp() {
   fake = await startFakeBridge();
-  bridge = await connectBridge({ url: fake.url });
+  bridge = await connectBridge({ port: fake.port });
   return { fake, bridge };
 }
 

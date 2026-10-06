@@ -120,7 +120,10 @@ export async function writeSettings(
 /**
  * Insert the plan's devices in order just before the post probe (at
  * `postIndex` in the track's own run), then set them. Returns where each one
- * landed and what was written.
+ * landed and what was written. Rejects, having written no control, if the
+ * run never shows each inserted device's class at its index within
+ * `readTimeoutMs`: a chain that disagrees with what Live just reported is not
+ * one to write into.
  */
 export async function applyPlan(
   bridge: Bridge,
@@ -128,6 +131,7 @@ export async function applyPlan(
   plan: Plan,
   postIndex: number,
   cache = new CurveCache(),
+  readTimeoutMs = 5_000,
 ): Promise<AppliedStep[]> {
   const placed: Array<{ step: PlanStep; target: DeviceTarget; className: string }> = [];
   for (const [k, step] of plan.steps.entries()) {
@@ -141,16 +145,14 @@ export async function applyPlan(
   const devices = await readRun(
     bridge,
     t,
-    placed.map(({ target }) => target.i),
+    placed.map(({ target, className }) => ({ i: target.i, className })),
+    readTimeoutMs,
   );
 
   const applied: AppliedStep[] = [];
   for (const { step, target, className } of placed) {
-    const device = devices[target.i];
-    if (!device || device.className !== className) {
-      applied.push({ device: step.device, target, className, written: [], missing: step.settings.map((s) => s.controls[0] ?? '?') });
-      continue;
-    }
+    // `readRun` resolved only once every index held its class with parameters.
+    const device = devices[target.i]!;
     const { written, missing } = await writeSettings(bridge, target, device, step.settings, cache);
     applied.push({ device: step.device, target, className, written, missing });
   }

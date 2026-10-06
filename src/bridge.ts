@@ -1,7 +1,7 @@
 // The socket to SessionBridge: send, request-and-await-reply, and listen.
 //
 // Uses Node's own `WebSocket` client, so the app has no runtime dependency
-// beyond the protocol's types. Only ever dials 127.0.0.1 unless told otherwise;
+// beyond the protocol's types. Only ever dials 127.0.0.1 (the port can vary);
 // the bridge binds nothing else.
 
 import { DEFAULT_PORT, WS_PATH } from './protocol.ts';
@@ -44,17 +44,15 @@ export interface Bridge {
 }
 
 export interface ConnectOptions {
-  host?: string;
+  /** The bridge's port on 127.0.0.1; `DEFAULT_PORT` when absent. */
   port?: number;
-  /** Overrides host and port entirely. */
-  url?: string;
   /** Default timeout for `request`, ms. */
   timeoutMs?: number;
 }
 
+/** Always 127.0.0.1: the bridge binds nothing else, so there is nothing else to dial. */
 export function bridgeUrl(options: ConnectOptions = {}): string {
-  if (options.url) return options.url;
-  return `ws://${options.host ?? '127.0.0.1'}:${options.port ?? DEFAULT_PORT}${WS_PATH}`;
+  return `ws://127.0.0.1:${options.port ?? DEFAULT_PORT}${WS_PATH}`;
 }
 
 export class BridgeError extends Error {

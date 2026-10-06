@@ -9,7 +9,7 @@ import { ensureProbes, readRun } from './chain.ts';
 import { CurveCache } from './paramSearch.ts';
 import { runPass, type PassResult } from './pass.ts';
 import { planChain } from './planner.ts';
-import type { ProbeReport, Track } from './protocol.ts';
+import type { ProbeEntry, ProbeReport, Track } from './protocol.ts';
 import { pickTrack, type TrackChoice } from './track.ts';
 import type { CaptureEntry, Material, Plan } from './types.ts';
 import { assess, type Assessment } from './verify.ts';
@@ -90,8 +90,23 @@ export async function run(bridge: Bridge, options: RunOptions, io: SessionIO): P
     await saveLastRun(options.stateDir, { at: new Date().toISOString(), track: { i: track.i, name: track.name }, pre, plan });
     if (options.dryRun) return { ...base, pre, plan };
 
+    // The user may have moved things while the recording played: find the
+    // probes again by key, from the latest `probes` list, rather than trust a
+    // position read before the pass.
+    const now = await bridge.probes();
+    const preNow = now.find((p) => p.key === probes.pre.key);
+    const postNow = now.find((p) => p.key === probes.post.key);
+    const onRun = (p: ProbeEntry | undefined): p is ProbeEntry =>
+      p !== undefined && p.target.t === track.i && p.target.path.length === 0;
+    if (!onRun(preNow) || !onRun(postNow) || preNow.target.i >= postNow.target.i) {
+      io.log(
+        `The probes on "${track.name}" moved or went away during the pass; nothing was inserted. Run again to lay them out.`,
+      );
+      return { ...base, pre, plan };
+    }
+
     const cache = new CurveCache();
-    const applied = await applyPlan(bridge, track.i, plan, probes.post.target.i, cache);
+    const applied = await applyPlan(bridge, track.i, plan, postNow.target.i, cache);
     for (const step of applied) {
       io.log(`  ${step.device} at ${step.target.i}: ${step.written.map((w) => `${w.control} ${w.display}${w.clamped ? ' (limit)' : ''}`).join(', ')}`);
       if (step.missing.length) io.log(`    not found on this device: ${step.missing.join(', ')}`);
@@ -112,7 +127,7 @@ export async function run(bridge: Bridge, options: RunOptions, io: SessionIO): P
     if (assessment.corrections.length) {
       const limiter = applied.find((step) => step.device === 'Limiter');
       if (limiter) {
-        const devices = await readRun(bridge, track.i, [limiter.target.i]);
+        const devices = await readRun(bridge, track.i, [{ i: limiter.target.i, className: limiter.className }]);
         const device = devices[limiter.target.i];
         if (device && device.className === limiter.className) {
           await writeSettings(bridge, limiter.target, device, assessment.corrections, cache);
