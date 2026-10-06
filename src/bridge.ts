@@ -39,6 +39,8 @@ export interface Bridge {
    */
   probes(timeoutMs?: number): Promise<ProbeEntry[]>;
   close(): Promise<void>;
+  /** Resolves when the socket has closed, from either side. */
+  closed: Promise<void>;
 }
 
 export interface ConnectOptions {
@@ -170,5 +172,5 @@ export async function connectBridge(options: ConnectOptions = {}): Promise<Bridg
     await closedPromise;
   };
 
-  return { send, request, on, waitFor, probes, close };
+  return { send, request, on, waitFor, probes, close, closed: closedPromise };
 }
