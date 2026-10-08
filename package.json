@@ -28,7 +28,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@openflow/protocol": "github:openflowfm/protocol#44a478273895f29913162695487c9ce7dc9fa268"
+    "@openflow/protocol": "github:openflowfm/protocol#952a16df6fc2e9b94ab2a417e9bd5837853d9707"
   },
   "devDependencies": {
     "@types/node": "^26.4.1",

@@ -6,7 +6,7 @@
 import type { Bridge } from './bridge.ts';
 import { readRun } from './chain.ts';
 import { CurveCache, findRawValue, type TextQuery } from './paramSearch.ts';
-import type { ChainDevice, DeviceParameterState, DeviceTarget } from './protocol.ts';
+import type { ChainDevice, DeviceParameterState, DeviceTarget } from '@openflow/protocol';
 import type { DeviceName, Plan, PlanStep, Setting } from './types.ts';
 
 /** One control as it was written. */

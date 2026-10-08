@@ -1,7 +1,7 @@
 // Compare what the post probe heard against the plan's targets, and work out
 // the one corrective adjustment the app is allowed to make. Pure.
 
-import type { ProbeReport } from './protocol.ts';
+import type { ProbeReport } from '@openflow/protocol';
 import type { Plan, Setting } from './types.ts';
 
 /** Integrated loudness within this many LU of the target counts as reached. */

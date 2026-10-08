@@ -1,6 +1,6 @@
 // Pick the track to work on from a snapshot, by name or by index.
 
-import type { Snapshot, Track } from './protocol.ts';
+import type { Snapshot, Track } from '@openflow/protocol';
 
 export interface TrackChoice {
   /** Exact name (case-insensitive), or a part of exactly one track's name. */

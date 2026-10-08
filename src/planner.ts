@@ -6,7 +6,7 @@
 // Dynamics → Limiter. Every step but the Limiter is added only when the report
 // says it is needed.
 
-import type { ProbeBand, ProbeReport } from './protocol.ts';
+import type { ProbeBand, ProbeReport } from '@openflow/protocol';
 import {
   DEFAULT_TARGET_LUFS,
   TRUE_PEAK_CEILING_DB,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Snapshot, Track } from './protocol.ts';
+import type { Snapshot, Track } from '@openflow/protocol';
 import { pickTrack } from './track.ts';
 
 function track(i: number, name: string): Track {

@@ -6,6 +6,6 @@
     "rewriteRelativeImportExtensions": true,
     "declaration": true
   },
-  "include": ["src/**/*.ts", "node_modules/@openflow/protocol/global.d.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["src/**/*.test.ts"]
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ProbeBand, ProbeReport } from './protocol.ts';
+import type { ProbeBand, ProbeReport } from '@openflow/protocol';
 import type { PlanStep, Setting } from './types.ts';
 import {
   MAX_BOOST_DB,

@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { connectBridge, type Bridge } from '../src/bridge.ts';
-import type { ChainDevice, DeviceParameterState, Event, ProbeEntry, ProbeReport, Request, Track } from '../src/protocol.ts';
+import type { ChainDevice, DeviceParameterState, Event, ProbeEntry, ProbeReport, Request, Track } from '@openflow/protocol';
 import { capture, run, type SessionIO } from '../src/session.ts';
 import type { CaptureEntry } from '../src/types.ts';
 import { startFakeBridge, type FakeBridge } from './fakeBridge.ts';

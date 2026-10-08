@@ -4,7 +4,7 @@
 
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { AddressInfo } from 'node:net';
-import type { Event, ProbeEntry, Request } from '../src/protocol.ts';
+import type { Event, ProbeEntry, Request } from '@openflow/protocol';
 
 export type Handler<T extends Request['type'] = Request['type']> = (
   request: Extract<Request, { type: T }>,

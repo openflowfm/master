@@ -1,7 +1,7 @@
 // The app's own vocabulary: what the planner hands to the apply step, and what
 // the capture log stores. Nothing here is on the wire.
 
-import type { ProbeReport } from './protocol.ts';
+import type { ProbeReport } from '@openflow/protocol';
 
 /** What the recording is, which sets the default loudness target. */
 export type Material = 'speech' | 'music';

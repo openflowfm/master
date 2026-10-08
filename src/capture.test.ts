@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { appendCapture, between, capturesFile, loadLastRun, saveLastRun, type LastRun } from './capture.ts';
-import type { ChainDevice, ProbeEntry } from './protocol.ts';
+import type { ChainDevice, ProbeEntry } from '@openflow/protocol';
 import type { CaptureEntry } from './types.ts';
 
 const devices = (n: number): ChainDevice[] =>

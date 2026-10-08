@@ -7,7 +7,7 @@
 // the wrong place are moved with `moveDevice`.
 
 import type { Bridge } from './bridge.ts';
-import type { ChainDevice, Event, ProbeEntry } from './protocol.ts';
+import type { ChainDevice, Event, ProbeEntry } from '@openflow/protocol';
 
 /** What the probe device is called wherever a person is told to drop one. */
 export const PROBE_DEVICE_NAME = 'open[flow] Probe';
