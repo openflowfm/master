@@ -3,7 +3,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { connectBridge, type Bridge } from '../src/bridge.ts';
 import { ensureProbes, PROBE_DEVICE_NAME, readRun } from '../src/chain.ts';
-import type { ChainDevice, Event, ProbeEntry, WatchedChain } from '../src/protocol.ts';
+import type { ChainDevice, Event, ProbeEntry, WatchedChain } from '@openflow/protocol';
 import { startFakeBridge, type FakeBridge } from './fakeBridge.ts';
 
 const PROBE_CLASS = 'MxDeviceAudioEffect';

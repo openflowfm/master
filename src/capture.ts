@@ -8,7 +8,7 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import type { Bridge } from './bridge.ts';
 import { readRun } from './chain.ts';
-import type { ChainDevice, ProbeEntry, ProbeReport } from './protocol.ts';
+import type { ChainDevice, ProbeEntry, ProbeReport } from '@openflow/protocol';
 import type { CaptureEntry, CapturedDevice, Plan } from './types.ts';
 
 /** `$OPENFLOW_MASTER_DIR`, else `~/.openflow/master`. */

@@ -1,7 +1,7 @@
 // master[flow] as a library. The CLI (`cli.ts`) is one consumer of this.
 
 export * from './types.ts';
-export { DEFAULT_PORT, WS_PATH } from './protocol.ts';
+export { DEFAULT_PORT, WS_PATH } from '@openflow/protocol';
 export { connectBridge, bridgeUrl, BridgeError, type Bridge, type ConnectOptions, type Outgoing } from './bridge.ts';
 export { pickTrack, type TrackChoice } from './track.ts';
 export { planProbeLayout, ensureProbes, readRun, PROBE_DEVICE_NAME, type ProbeLayout, type ProbeMove } from './chain.ts';

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { connectBridge, type Bridge } from '../src/bridge.ts';
 import { runPass, stopAfter } from '../src/pass.ts';
-import type { Event, ProbeReport } from '../src/protocol.ts';
+import type { Event, ProbeReport } from '@openflow/protocol';
 import { startFakeBridge, type FakeBridge } from './fakeBridge.ts';
 
 const target = { t: 0, path: [], i: 1 };

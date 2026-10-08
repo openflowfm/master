@@ -101,7 +101,6 @@ layout, apply, verify and capture.
 
 ```
 src/bridge.ts       the socket: send, request/reply by id, events
-src/protocol.ts     wire types from @openflow/protocol's global namespace, WS_PATH, DEFAULT_PORT
 src/track.ts        pick the track
 src/chain.ts        probe layout (pure) and the moves; readRun over watchChains
 src/pass.ts         one listening pass, per the Probe contract

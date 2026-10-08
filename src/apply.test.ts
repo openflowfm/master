@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { findControl, findItem } from './apply.ts';
-import type { DeviceParameterState } from './protocol.ts';
+import type { DeviceParameterState } from '@openflow/protocol';
 
 const param = (name: string): DeviceParameterState => ({ name, value: 0, min: 0, max: 1, quantized: false }) as DeviceParameterState;
 

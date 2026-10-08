@@ -8,7 +8,7 @@
 // the probes going away).
 
 import { BridgeError, type Bridge } from './bridge.ts';
-import type { Event, ProbeReport } from './protocol.ts';
+import type { Event, ProbeReport } from '@openflow/protocol';
 
 export interface PassResult {
   pass: number;

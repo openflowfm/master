@@ -1,11 +1,11 @@
 // The socket to SessionBridge: send, request-and-await-reply, and listen.
 //
-// Uses Node's own `WebSocket` client, so the app has no runtime dependency
-// beyond the protocol's types. Only ever dials 127.0.0.1 (the port can vary);
-// the bridge binds nothing else.
+// Uses Node's own `WebSocket` client, so the app's only runtime dependency is
+// `@openflow/protocol` (its types and two constants). Only ever dials 127.0.0.1
+// (the port can vary); the bridge binds nothing else.
 
-import { DEFAULT_PORT, WS_PATH } from './protocol.ts';
-import type { Event, EventOf, EventType, ProbeEntry, Request } from './protocol.ts';
+import { DEFAULT_PORT, WS_PATH } from '@openflow/protocol';
+import type { Event, EventOf, EventType, ProbeEntry, Request } from '@openflow/protocol';
 
 type WithoutId<T> = T extends unknown ? Omit<T, 'id'> : never;
 /** A request as a caller writes it: the client assigns the `id`. */

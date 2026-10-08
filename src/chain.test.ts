@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyMoves, planProbeLayout, PROBE_DEVICE_NAME } from './chain.ts';
-import type { ChainDevice, ProbeEntry } from './protocol.ts';
+import type { ChainDevice, ProbeEntry } from '@openflow/protocol';
 
 const PROBE_CLASS = 'MxDeviceAudioEffect';
 

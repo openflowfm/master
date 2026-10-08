@@ -9,7 +9,7 @@ import { ensureProbes, readRun } from './chain.ts';
 import { CurveCache } from './paramSearch.ts';
 import { runPass, type PassResult } from './pass.ts';
 import { planChain } from './planner.ts';
-import type { ProbeEntry, ProbeReport, Track } from './protocol.ts';
+import type { ProbeEntry, ProbeReport, Track } from '@openflow/protocol';
 import { pickTrack, type TrackChoice } from './track.ts';
 import type { CaptureEntry, Material, Plan } from './types.ts';
 import { assess, type Assessment } from './verify.ts';

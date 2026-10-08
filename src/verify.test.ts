@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ProbeReport } from './protocol.ts';
+import type { ProbeReport } from '@openflow/protocol';
 import type { Plan } from './types.ts';
 import { assess, GAIN_RANGE_DB, limiterValue } from './verify.ts';
 

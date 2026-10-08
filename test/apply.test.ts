@@ -5,7 +5,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { applyPlan } from '../src/apply.ts';
 import { connectBridge, type Bridge } from '../src/bridge.ts';
-import type { ChainDevice, DeviceParameterState, Request } from '../src/protocol.ts';
+import type { ChainDevice, DeviceParameterState, Request } from '@openflow/protocol';
 import type { Plan } from '../src/types.ts';
 import { startFakeBridge, type FakeBridge } from './fakeBridge.ts';
 

@@ -6,7 +6,6 @@
   "include": [
     "src/**/*.ts",
     "test/**/*.ts",
-    "vitest.config.ts",
-    "node_modules/@openflow/protocol/global.d.ts"
+    "vitest.config.ts"
   ]
 }
